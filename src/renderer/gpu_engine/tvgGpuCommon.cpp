@@ -26,6 +26,20 @@
 namespace tvg
 {
 
+void GpuShapeTasks::request(GpuShapeTask* task, const RenderShape& rshape, RenderUpdateFlag flags)
+{
+    task->rshape = &rshape;
+    task->geometryFlags = flags;
+    if (TaskScheduler::threads() > 0) pending.push(task);
+    TaskScheduler::request(task);
+}
+
+void GpuShapeTasks::done()
+{
+    for (auto task : pending) task->done();
+    pending.clear();
+}
+
 /************************************************************************/
 /* Utility Functions Implementation                                     */
 /************************************************************************/
@@ -218,19 +232,22 @@ struct ThinPathTracker
 
 // Simplify in transformed space and optionally mirror the same decisions into a
 // local-coordinate path for stroke tessellation.
-void gpuOptimize(const RenderPath& in, GpuOptimizeResult& result, const Matrix& matrix)
+GpuOptimizeResult gpuOptimize(const RenderShape& shape, const Matrix& matrix, RenderPath& out, RenderPath& stroke)
 {
-    result.thin = false;
-    result.skipFill = false;
-    if (!result.transformed) return;
-
-    auto& out = *result.transformed;
     out.clear();
+    stroke.clear();
 
-    auto localOut = result.local;
-    if (localOut) localOut->clear();
+    auto path = &shape.path;
+    if (shape.trimpath()) {
+        auto& trimmed = RenderPath::scratch();
+        if (!shape.stroke->trim.trim(*path, trimmed)) return {};
+        path = &trimmed;
+    }
+    const auto& in = *path;
+    if (in.empty()) return {};
 
-    if (in.empty()) return;
+    auto width = shape.strokeWidth();
+    auto localOut = (std::isfinite(width) && !zero(width)) ? &stroke : nullptr;
 
     out.cmds.reserve(in.cmds.count);
     out.pts.reserve(in.pts.count);
@@ -383,12 +400,14 @@ void gpuOptimize(const RenderPath& in, GpuOptimizeResult& result, const Matrix& 
     }
     finalizeSubpath();
     // thin means "use thin fill fallback", not just "the geometry is narrow".
+    GpuOptimizeResult result;
     result.thin = thinTracker.candidate && thinTracker.ready && (drawableSubpathCnt == 1);
     if (result.thin && thinTracker.tooThin()) {
         // Too thin for fallback: keep the path for strokes, but skip the fill.
         result.thin = false;
         result.skipFill = true;
     }
+    return result;
 }
 
 bool gpuEdgesCross(const Point& p0, const Point& p1, const Point& p2, const Point& p3)

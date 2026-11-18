@@ -159,6 +159,7 @@ struct GlRenderer : RenderMethod
     GlStageBuffer mGpuBuffer;
     GlRenderTarget mRootTarget;
     GlEffect mEffect;
+    GpuShapeTasks mShapeTasks;
     Array<GlProgram*> mPrograms;
 
     Array<GlRenderTargetPool*> mComposePool;

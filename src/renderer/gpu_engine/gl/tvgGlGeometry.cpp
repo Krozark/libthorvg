@@ -103,35 +103,24 @@ bool GlIntersector::intersect(const GlImage* image, const RenderRegion& region)
 }
 
 /************************************************************************/
-/* GlGeometry                                                           */
+/* GlShape                                                              */
 /************************************************************************/
 
-void GlGeometry::prepare(const RenderShape& rshape)
+void GlShape::run(TVG_UNUSED unsigned tid)
 {
-    optPathThin = false;
-    optPathSkipFill = false;
-    optStrokePath.clear();
-
-    auto strokeWidth = rshape.strokeWidth();
-    auto localOut = (std::isfinite(strokeWidth) && !tvg::zero(strokeWidth)) ? &optStrokePath : nullptr;
-    auto path = &rshape.path;
-
-    if (rshape.trimpath()) {
-        auto& trimmedPath = RenderPath::scratch();
-        if (rshape.stroke->trim.trim(rshape.path, trimmedPath)) {
-            path = &trimmedPath;
-        } else {
-            optPath.clear();
-            return;
-        }
+    // A newly enabled stroke needs a local path even if the transform and fill are cached.
+    auto width = rshape->strokeWidth();
+    if ((geometryFlags & (RenderUpdateFlag::Path | RenderUpdateFlag::Transform)) ||
+        (geometry.optStrokePath.empty() && std::isfinite(width) && !tvg::zero(width))) {
+        valid.fill = geometry.tesselateShape(*rshape, multiplier);
     }
-
-    GpuOptimizeResult result{&optPath, localOut};
-    gpuOptimize(*path, result, matrix);
-    optPathThin = result.thin;
-    optPathSkipFill = result.skipFill;
+    valid.stroke = geometry.tesselateStroke(*rshape);
+    opacity *= multiplier;
 }
 
+/************************************************************************/
+/* GlGeometry                                                           */
+/************************************************************************/
 
 bool GlGeometry::tesselateShape(const RenderShape& rshape, float& multiplier)
 {
@@ -141,14 +130,15 @@ bool GlGeometry::tesselateShape(const RenderShape& rshape, float& multiplier)
     convex = false;
     multiplier = 1.0f;
 
-    // `skipFill` means the path stayed thin enough that even thin fallback should not draw a fill.
-    if (optPathSkipFill) return false;
+    auto& optPath = RenderPath::scratch();
+    auto optimized = gpuOptimize(rshape, matrix, optPath, optStrokePath);
+    if (optimized.skipFill) return false;
 
     // When the CTM scales a filled path so small that its device-space
     // World:  [========]     // normal-sized filled path
     // After CTM:  [.]        // thinner than 1 px in device space
     // Visible thin fills use stroke tessellation; sub-quantum fills are skipped earlier.
-    if (optPathThin && tvg::zero(rshape.strokeWidth())) {
+    if (optimized.thin && tvg::zero(rshape.strokeWidth())) {
         if (tesselateThinFill(optPath)) {
             multiplier = MIN_GL_STROKE_ALPHA;
             fillRule = rshape.rule;
