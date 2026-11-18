@@ -24,6 +24,7 @@
 #include "tvgGlGpuBuffer.h"
 #include "tvgGlRenderTask.h"
 #include "tvgGlTessellator.h"
+#include "tvgGpuTessellator.h"
 
 /************************************************************************/
 /* GlIntersector                                                        */
@@ -157,11 +158,10 @@ bool GlGeometry::tesselateShape(const RenderShape& rshape, float& multiplier)
     }
 
     // Handle normal shapes with more than 2 points
-    BWTessellator bwTess{&fill};
-    bwTess.tessellate(optPath);
+    auto result = gpuTessellateFill(optPath, fill.vertex, fill.index);
     fillRule = rshape.rule;
-    fillBBox = bwTess.bounds();
-    convex = bwTess.convex;
+    fillBBox = result.bounds();
+    convex = result.convex;
 
     return true;
 }

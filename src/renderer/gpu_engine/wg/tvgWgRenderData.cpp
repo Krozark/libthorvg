@@ -26,6 +26,7 @@
 #include "tvgCommon.h"
 #include "tvgMath.h"
 #include "tvgWgTessellator.h"
+#include "tvgGpuTessellator.h"
 #include "tvgWgTextureMgr.h"
 #include "tvgWgShaderTypes.h"
 #include "tvgWgRenderData.h"
@@ -178,10 +179,9 @@ void WgShape::update(const RenderShape& rshape, const Matrix& transform, RenderU
                 bbox = stroker.getBBox();
                 shape.setting.opacityMultiplier = MIN_WG_STROKE_ALPHA;
             } else {
-                WgBWTessellator bwTess{&shape.mesh};
-                bwTess.tessellate(optPath);
-                convex = bwTess.convex;
-                bbox = bwTess.getBBox();
+                auto result = gpuTessellateFill(optPath, shape.mesh.vbuffer, shape.mesh.ibuffer);
+                convex = result.convex;
+                bbox = result.bbox;
             }
             if (shape.mesh.ibuffer.empty()) {
                 shape.mesh.clear();

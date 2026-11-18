@@ -1,6 +1,7 @@
 source_file = [
    'tvgGpuCommon.h',
-   'tvgGpuCommon.cpp'
+   'tvgGpuCommon.cpp',
+   'tvgGpuTessellator.h'
 ]
 
 engine_dep += [declare_dependency(
