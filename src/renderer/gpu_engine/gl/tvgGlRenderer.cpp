@@ -1031,9 +1031,7 @@ bool GlRenderer::bounds(RenderData data, Point* pt4, const Matrix& m)
 
     tvg::BBox bbox;
     bbox.init();
-    auto& vertexes = shape->geometry.stroke.vertex;
-    for (uint32_t i = 0; i < vertexes.count / 2; i++) {
-        Point vert = {vertexes[i * 2 + 0], vertexes[i * 2 + 1]};
+    for (auto vert : shape->geometry.stroke.vertex) {
         vert *= m;
         bbox = {min(bbox.min, vert), max(bbox.max, vert)};
     }

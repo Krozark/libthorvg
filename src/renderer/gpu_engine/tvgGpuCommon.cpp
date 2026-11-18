@@ -26,11 +26,25 @@
 namespace tvg
 {
 
+bool GpuShapeTask::tryRunInline()
+{
+    auto& path = rshape->path;
+    if (rshape->stroke || path.pts.count > 4 || path.cmds.count > 5) return false;
+    for (auto cmd : path.cmds) {
+        if (cmd == PathCommand::CubicTo) return false;
+    }
+    run(0);
+    return true;
+}
+
 void GpuShapeTasks::request(GpuShapeTask* task, const RenderShape& rshape, RenderUpdateFlag flags)
 {
     task->rshape = &rshape;
     task->geometryFlags = flags;
-    if (TaskScheduler::threads() > 0) pending.push(task);
+    if (TaskScheduler::threads() > 0) {
+        if (task->tryRunInline()) return;
+        pending.push(task);
+    }
     TaskScheduler::request(task);
 }
 

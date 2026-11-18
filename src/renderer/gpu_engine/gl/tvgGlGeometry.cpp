@@ -86,8 +86,7 @@ bool GlIntersector::intersect(const GlImage* image, const RenderRegion& region)
     Point triangle[6];
 
     for (uint32_t i = 0; i < 6; ++i) {
-        auto idx = mesh.index[i] * 4;
-        triangle[i] = Point{mesh.vertex[idx], mesh.vertex[idx + 1]};
+        triangle[i] = mesh.vertex[mesh.index[i] * 2];
     }
 
     auto sizeX = region.sw();
@@ -207,7 +206,7 @@ void GlGeometry::tesselateImage(const RenderSurface* image)
     fill.clear();
     fillWorld = true;
     strokeRenderWidth = 0.0f;
-    fill.vertex.reserve(5 * 4);
+    fill.vertex.reserve(4 * 2);
     fill.index.reserve(6);
 
     auto leftTop = Point{0.f, 0.f} * matrix;
@@ -216,10 +215,8 @@ void GlGeometry::tesselateImage(const RenderSurface* image)
     auto rightBottom = Point{float(image->w), float(image->h)} * matrix;
 
     auto appendVertex = [&](const Point& pt, float u, float v) {
-        fill.vertex.push(pt.x);
-        fill.vertex.push(pt.y);
-        fill.vertex.push(u);
-        fill.vertex.push(v);
+        fill.vertex.push(pt);
+        fill.vertex.push({u, v});
     };
 
     appendVertex(leftTop, 0.f, 0.f);
@@ -241,16 +238,16 @@ void GlGeometry::tesselateImage(const RenderSurface* image)
 void GlGeometry::draw(GlRenderTask* task, GlStageBuffer* gpuBuffer, RenderUpdateFlag flag) const
 {
     auto buffer = ((flag & RenderUpdateFlag::Stroke) || (flag & RenderUpdateFlag::GradientStroke)) ? &stroke : &fill;
-    auto vertexOffset = gpuBuffer->push(buffer->vertex.data, buffer->vertex.count * sizeof(float));
+    auto vertexOffset = gpuBuffer->push(buffer->vertex.data, buffer->vertex.count * sizeof(Point));
     auto indexOffset = gpuBuffer->pushIndex(buffer->index.data, buffer->index.count * sizeof(uint32_t));
     auto vertexBuffer = gpuBuffer->getBufferId();
 
     if (flag & RenderUpdateFlag::Image) {
         // image has two attribute: [pos, uv]
-        task->addVertexLayout(GlVertexLayout{0, 2, 4 * sizeof(float), vertexOffset, GL_FLOAT, GL_FALSE, vertexBuffer});
-        task->addVertexLayout(GlVertexLayout{1, 2, 4 * sizeof(float), vertexOffset + 2 * sizeof(float), GL_FLOAT, GL_FALSE, vertexBuffer});
+        task->addVertexLayout(GlVertexLayout{0, 2, 2 * sizeof(Point), vertexOffset, GL_FLOAT, GL_FALSE, vertexBuffer});
+        task->addVertexLayout(GlVertexLayout{1, 2, 2 * sizeof(Point), vertexOffset + sizeof(Point), GL_FLOAT, GL_FALSE, vertexBuffer});
     } else {
-        task->addVertexLayout(GlVertexLayout{0, 2, 2 * sizeof(float), vertexOffset, GL_FLOAT, GL_FALSE, vertexBuffer});
+        task->addVertexLayout(GlVertexLayout{0, 2, sizeof(Point), vertexOffset, GL_FLOAT, GL_FALSE, vertexBuffer});
     }
     task->setDrawRange(indexOffset, buffer->index.count);
 }

@@ -70,7 +70,7 @@ enum class GlStencilMode
 
 struct GlGeometryBuffer
 {
-    Array<float> vertex;
+    Array<Point> vertex;
     Array<uint32_t> index;
 
     void clear()

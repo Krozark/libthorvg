@@ -34,6 +34,8 @@ struct GpuShapeTask : Task
 {
     const RenderShape* rshape = nullptr;
     RenderUpdateFlag geometryFlags = RenderUpdateFlag::None;
+
+    bool tryRunInline();
 };
 
 // Shape tasks borrow the paint's path and stroke until the end of the update.
