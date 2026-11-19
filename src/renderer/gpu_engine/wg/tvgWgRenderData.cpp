@@ -144,13 +144,13 @@ void WgShape::run(TVG_UNUSED unsigned tid)
 
     // update fill shapes
     if (updatePath || (geometryFlags & (RenderUpdateFlag::Color | RenderUpdateFlag::Gradient))) {
-        if (optimized.skipFill) {
+        if (optimized == GpuOptimizeResult::SkipFill) {
             // Too-thin fills are suppressed instead of going through thin fallback.
             shape.mesh.clear();
         } else {
             BBox bbox;
             // Drawable thin fills are tessellated as a minimal-width stroke.
-            if (optimized.thin && tvg::zero(strokeWidth)) {
+            if (optimized == GpuOptimizeResult::Thin && tvg::zero(strokeWidth)) {
                 WgStroker stroker(&shape.mesh, MIN_WG_STROKE_WIDTH, StrokeCap::Butt, StrokeJoin::Bevel);
                 stroker.run(optPath, true);
                 bbox = stroker.getBBox();

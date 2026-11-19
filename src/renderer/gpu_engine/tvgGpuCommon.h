@@ -48,10 +48,11 @@ private:
     Array<GpuShapeTask*> pending;
 };
 
-struct GpuOptimizeResult
+enum class GpuOptimizeResult : uint8_t
 {
-    bool thin = false;
-    bool skipFill = false;
+    Normal,
+    Thin,
+    SkipFill
 };
 
 GpuOptimizeResult gpuOptimize(const RenderShape& shape, const Matrix& matrix, RenderPath& fill, RenderPath& stroke);
@@ -62,8 +63,8 @@ uint32_t gpuArcSegmentsCnt(float arcAngle, float pixelRadius);
 Matrix gpuConicTransform(const Point& center, float angle);
 
 bool gpuPointInTriangle(const Point& p, const Point& a, const Point& b, const Point& c);
-bool gpuPointInAnyMesh(const Point& p, const void* vertices, const uint32_t* indices, uint32_t count);
-bool gpuPointInFillMesh(const Point& p, const void* vertices, const uint32_t* indices, uint32_t count, FillRule rule);
+bool gpuPointInAnyMesh(const Point& p, const Point* vertices, const uint32_t* indices, uint32_t count);
+bool gpuPointInFillMesh(const Point& p, const Point* vertices, const uint32_t* indices, uint32_t count, FillRule rule);
 bool gpuPointInQuad(const Point& p, const Point (&triangle)[6]);
 
 // Conservative triangle-fan safety check

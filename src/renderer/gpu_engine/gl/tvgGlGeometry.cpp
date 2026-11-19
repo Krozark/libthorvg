@@ -131,13 +131,13 @@ bool GlGeometry::tesselateShape(const RenderShape& rshape, float& multiplier)
 
     auto& optPath = RenderPath::scratch();
     auto optimized = gpuOptimize(rshape, matrix, optPath, optStrokePath);
-    if (optimized.skipFill) return false;
+    if (optimized == GpuOptimizeResult::SkipFill) return false;
 
     // When the CTM scales a filled path so small that its device-space
     // World:  [========]     // normal-sized filled path
     // After CTM:  [.]        // thinner than 1 px in device space
     // Visible thin fills use stroke tessellation; sub-quantum fills are skipped earlier.
-    if (optimized.thin && tvg::zero(rshape.strokeWidth())) {
+    if (optimized == GpuOptimizeResult::Thin && tvg::zero(rshape.strokeWidth())) {
         if (tesselateThinFill(optPath)) {
             multiplier = MIN_GL_STROKE_ALPHA;
             fillRule = rshape.rule;
